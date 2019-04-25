@@ -1,4 +1,4 @@
-$workingFolder = "C:\Users\stef9458\Desktop\2019-01-01 - Dive 1 - Fake Dive"
+$workingFolder = "J:\03. Go Pro\2019-04-21 Diving - Puffin Island"
 $KeepJunk = $True
 $AdditionalFilesFolder = "GoPro-Additional"
 $GoodFormat = "*.MP4"
@@ -65,30 +65,34 @@ foreach ($Name in $filelist) {
                 Write-Debug "x is $x and y is $y"
                 $x++
             }
-
             #GoPro Trash
-
         }
-
     }
-    if ($MakeChanges) {
-        $AdditionalCopyDestination = $workingFolder + "\" + $AdditionalFilesFolder
-        write-Verbose "Make Changes set to true. Moving GoPro Additional files"
-        
-        if (Test-Path -PathType Container $AdditionalCopyDestination) {
-            write-verbose "$AdditionalCopyDestination already exists, doing nothing for now"                
-        }
-        else {
-            write-verbose "$AdditionalCopyDestination Does not exist, creating folder."                
-            New-Item -ItemType directory -Path $AdditionalCopyDestination
-        }
-        #Moving Low Resolution files
-        Move-Item -Path $workingFolder\*.LRV -Destination $AdditionalCopyDestination
-        #Moving Low Resolution THM files
-        Move-Item -Path $workingFolder\*.THM -Destination $AdditionalCopyDestination
+
+    if ( (Get-ChildItem $workingFolder -Filter *LRV -Recurse).Count -eq 0 -and ((Get-ChildItem $workingFolder -Filter *THM -Recurse).Count -eq 0)) {
+        Write-Verbose "No additional files exist in $WorkingFolder, quitting"
     }
     else {
-        write-Verbose "Make Changes set to true. NOT Moving Additional files"
-        Write-Verbose "[PRETEND] Moving all .LRV and .THM files from workingFolder"
+        Write-Verbose "Some additional files found, continuing"
+        if ($MakeChanges) {
+            $AdditionalCopyDestination = $workingFolder + "\" + $AdditionalFilesFolder
+            write-Verbose "Make Changes set to true. Moving GoPro Additional files"
+        
+            if (Test-Path -PathType Container $AdditionalCopyDestination) {
+                write-verbose "$AdditionalCopyDestination already exists, doing nothing for now"                
+            }
+            else {
+                write-verbose "$AdditionalCopyDestination Does not exist, creating folder."                
+                New-Item -ItemType directory -Path $AdditionalCopyDestination
+            }
+            #Moving Low Resolution files
+            Move-Item -Path $workingFolder\*.LRV -Destination $AdditionalCopyDestination
+            #Moving Low Resolution THM files
+            Move-Item -Path $workingFolder\*.THM -Destination $AdditionalCopyDestination
+        }
+        else {
+            write-Verbose "Make Changes set to true. NOT Moving Additional files"
+            Write-Verbose "[PRETEND] Moving all .LRV and .THM files from workingFolder"
+        }
     }
 }
