@@ -1,5 +1,4 @@
 ## GoProRenamer
-
 Script to rename the poorly (*imo*) named GoPro files into something more logical / nicer to play with. While this is not a life-ending feature of the GoPro it does mean that things don't sort nicely and when I come to join them there's always some level of thinking and referring to their [documentation](https://gopro.com/help/articles/question_answer/GoPro-Camera-File-Naming-Convention) involved.
 
 |                |Before                    |After                      |

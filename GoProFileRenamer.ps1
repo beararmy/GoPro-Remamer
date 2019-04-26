@@ -1,10 +1,12 @@
-$workingFolder = "J:\03. Go Pro\2019-04-21 Diving - Puffin Island"
-$additionalFilesFolder = "GoPro-Additional"
+param (
+    [string]$workingFolder = ".",
+    [string]$additionalFilesFolder = "GoPro-Additional",
+    [bool]$keepJunk = $True,
+    [bool]$makeChanges = $True
+)
 $firstFileCatch = "GOPR*MP4"
-$keepJunk = $True
-$makeChanges = $True
 
-Write-Verbose "Running in $WorkingFolder and KeepJunk is set to $keepJunk on this run, continuing"
+Write-Verbose "Running in $workingFolder and KeepJunk is set to $keepJunk on this run, continuing"
 $filelist = (Get-ChildItem -Path $workingFolder)
 
 foreach ($name in $filelist) {
