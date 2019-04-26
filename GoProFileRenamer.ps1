@@ -1,68 +1,48 @@
 $workingFolder = "J:\03. Go Pro\2019-04-21 Diving - Puffin Island"
-$KeepJunk = $True
-$AdditionalFilesFolder = "GoPro-Additional"
-$GoodFormat = "*.MP4"
-$ffmpegbinary = ""
-$MakeChanges = $True
-$FirstFileCatch = "GOPR*MP4"
-start-sleep 5
-Write-Verbose "Running in $WorkingFolder and KeepJunk is set to $KeepJUnk on this run"
+$additionalFilesFolder = "GoPro-Additional"
+$firstFileCatch = "GOPR*MP4"
+$keepJunk = $True
+$makeChanges = $True
+
+Write-Verbose "Running in $WorkingFolder and KeepJunk is set to $keepJunk on this run, continuing"
 $filelist = (Get-ChildItem -Path $workingFolder)
 
-if ($MakeChanges) {
-    write-Verbose "Make Changes set to true. Moving Primary files. Bahahaha."
-}
-else {
-    write-Verbose "Make Changes set to false. NOT Moving Primary files. D'awwww :("
-}
+foreach ($name in $filelist) {
 
-foreach ($Name in $filelist) {
-
-    if ($Name -like $FirstFileCatch) {
-        Write-Verbose "Found $Name to work on"
-        $NameString = $Name.ToString()
-        $SequenceNumber = $NameString.SubString(4, 4)
-        Write-Verbose "Video Sequence Number is $SequenceNumber"
-        $PrimaryCopyPath = $workingFolder + "\" + $Name
-        $PrimaryCopyDestination = $workingFolder + "\" + "$SequenceNumber-Part01.mp4"
-        if ($MakeChanges) {
-            write-Verbose "Make Changes set to true. Moving Primary files"
-            Write-Verbose "Moving $PrimaryCopyPath over to $SequenceNumber-Part01.mp4"
-            # I think this first one is dead now
-            #Move-Item -Path $PrimaryCopyPath -Destination "$SequenceNumber-Part01.mp4"
-            Move-Item -Path $PrimaryCopyPath -Destination $PrimaryCopyDestination
-
+    if ($name -like $firstFileCatch) {
+        Write-Verbose "Found $name to work on"
+        $nameString = $name.ToString()
+        $sequenceNumber = $nameString.SubString(4, 4)
+        Write-Verbose "Video Sequence Number is $sequenceNumber"
+        $primaryCopyPath = $workingFolder + "\" + $name
+        $primaryCopyDestination = $workingFolder + "\" + "$sequenceNumber-Part01.mp4"
+        if ($makeChanges) {
+            Write-Verbose "Make Changes set to true. Moving Primary files, continuing"
+            Write-Verbose "Moving $primaryCopyPath over to $sequenceNumber-Part01.mp4"
+            Move-Item -Path $primaryCopyPath -Destination $primaryCopyDestination
         }
         else {
-            write-Verbose "Make Changes set to false. NOT Moving Primary files"
-            Write-Verbose "[PRETEND] Moving $PrimaryCopyPath over to $SequenceNumber-Part01.mp4"
+            Write-Verbose "Make Changes set to False. NOT Moving Primary files, continuing"
         }
         # Start with 1 as that's what gopro does
         $x = 1
-        $SequenceString = ("GP*" + $SequenceNumber + ".MP4")
-        Get-ChildItem -Filter $SequenceString
-        $y = 0 #Here while I'm working on this script
-        $y = ((Get-ChildItem -path $workingFolder $SequenceString).Count + 1)
+        $sequenceString = ("GP*" + $sequenceNumber + ".MP4")
+        Get-ChildItem -Filter $sequenceString
+        $y = ((Get-ChildItem -path $workingFolder $sequenceString).Count + 1)
         if ($y -ne 1) {
-            Write-Verbose "I found $($y-1) Secondary files using $SequenceString for $SequenceNumber"
+            Write-Verbose "I found $($y-1) Secondary files using $sequenceString for $sequenceNumber, continuing"
             while ($x -lt $y) {
-                $SegmentNumber = $x
-
-                $SecondaryFileName = ("GP0" + $SegmentNumber + $SequenceNumber + ".MP4")
-                $SecondaryCopyPath = $workingFolder + "\" + $SecondaryFileName
-                $SecondaryCopyDestination = $workingFolder + "\" + "$SequenceNumber-Part0$($SegmentNumber+1).mp4"
-
-                if ($MakeChanges) {
-                    write-Verbose "Make Changes set to true. Moving Secondary files"
-                    Write-Verbose "Moving $SecondaryCopyPath over to $SecondaryCopyDestination"
-                    Move-Item -Path $SecondaryCopyPath -Destination $SecondaryCopyDestination
+                $segmentNumber = $x
+                $secondaryFileName = ("GP0" + $segmentNumber + $sequenceNumber + ".MP4")
+                $secondaryCopyPath = $workingFolder + "\" + $secondaryFileName
+                $secondaryCopyDestination = $workingFolder + "\" + "$sequenceNumber-Part0$($segmentNumber+1).mp4"
+                if ($makeChanges) {
+                    Write-Verbose "Moving $secondaryCopyPath over to $secondaryCopyDestination, continuing"
+                    Move-Item -Path $secondaryCopyPath -Destination $secondaryCopyDestination
                 }
                 else {
-                    write-Verbose "Make Changes set to true. NOT Moving Secondary files"
-                    Write-Verbose "[PRETEND] Moving $SecondaryCopyPath over to $SecondaryCopyDestination"
+                    Write-Verbose "Make Changes set to False. NOT Moving Secondary files, continuing"
                 }
-
-                Write-Debug "x is $x and y is $y"
                 $x++
             }
             #GoPro Trash
@@ -70,29 +50,26 @@ foreach ($Name in $filelist) {
     }
 
     if ( (Get-ChildItem $workingFolder -Filter *LRV -Recurse).Count -eq 0 -and ((Get-ChildItem $workingFolder -Filter *THM -Recurse).Count -eq 0)) {
-        Write-Verbose "No additional files exist in $WorkingFolder, quitting"
+        Write-Verbose "No additional files exist in $workingFolder, exiting"
     }
     else {
-        Write-Verbose "Some additional files found, continuing"
-        if ($MakeChanges) {
-            $AdditionalCopyDestination = $workingFolder + "\" + $AdditionalFilesFolder
-            write-Verbose "Make Changes set to true. Moving GoPro Additional files"
-        
-            if (Test-Path -PathType Container $AdditionalCopyDestination) {
-                write-verbose "$AdditionalCopyDestination already exists, doing nothing for now"                
+        Write-Verbose "Additional files found, continuing"
+        if ($makeChanges) {
+            $additionalCopyDestination = $workingFolder + "\" + $additionalFilesFolder        
+            if (Test-Path -PathType Container $additionalCopyDestination) {
+                Write-verbose "$additionalCopyDestination already exists, continuing"                
             }
             else {
-                write-verbose "$AdditionalCopyDestination Does not exist, creating folder."                
-                New-Item -ItemType directory -Path $AdditionalCopyDestination
+                Write-Verbose "$additionalCopyDestination does not exist, creating"                
+                New-Item -ItemType directory -Path $additionalCopyDestination
             }
             #Moving Low Resolution files
-            Move-Item -Path $workingFolder\*.LRV -Destination $AdditionalCopyDestination
+            Move-Item -Path $workingFolder\*.LRV -Destination $additionalCopyDestination
             #Moving Low Resolution THM files
-            Move-Item -Path $workingFolder\*.THM -Destination $AdditionalCopyDestination
+            Move-Item -Path $workingFolder\*.THM -Destination $additionalCopyDestination
         }
         else {
-            write-Verbose "Make Changes set to true. NOT Moving Additional files"
-            Write-Verbose "[PRETEND] Moving all .LRV and .THM files from workingFolder"
+            Write-Verbose "Make Changes set to False. NOT Moving Additional files, continuing"
         }
     }
 }
