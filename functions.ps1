@@ -1,53 +1,43 @@
 function Find-GoProPossibleSequences {
     param (
-        [string]$workingFolder = ".",
-        [string]$cameraModel = "HERO5",
-        [string]$sequenceNumber
-
+        [ValidateScript({
+            if( -Not ($_ | Test-Path) ){
+                throw "Folder does not exist"
+            }
+            return $true
+        })]
+        [string]$workingFolder,
+        [string]$cameraModel = "HERO5"
     )
     switch ( $cameraModel ) {
         HERO5 { $sequenceNumberRegex = "GOPR*MP4" }
     }
-
-    # if ($sequenceNumber) {
-    #     $list = Get-ChildItem -Path $workingFolder -Filter $sequenceNumberRegex | Where-Object { $_.Name -match "$sequenceNumber" }
-    #     $nameString = $list.Name.ToString()
-    #     $sequenceNumber = ($nameString).SubString(4, 4)
-    #     $fullWorkingPath = $workingFolder + $list.Name
-    #     [pscustomobject]$output = [PSCustomObject]@{
-    #         SequenceNumber   = $sequenceNumber
-    #         SequenceFilename = $list.Name
-    #         FullPath         = $fullWorkingPath
-    #         var4 = "test"
-
-    #     }
-    #     return $output
-    # } else {
-    #     Write-Error "Failed to identify any Sequences"
-    #     return $false
-    # }
-
     # Find possible sequences
     $list = Get-ChildItem -Path $workingFolder -Filter $sequenceNumberRegex 
     [pscustomobject]$output = foreach ($listitem in $list) {
         $nameString = $listitem.Name.ToString()
         $sequenceNumber = ($nameString).SubString(4, 4)
         $fullWorkingPath = $workingFolder + $listitem.Name
-        Write-Verbose "Found $($listitem.Name) as Sequence number $sequenceNumber. File is at $fullWorkingPath"
+        Write-Host "Found $($listitem.Name) as Sequence number $sequenceNumber. File is at $fullWorkingPath"
         [PSCustomObject]@{
             SequenceNumber   = $sequenceNumber
             SequenceFilename = $listitem.Name
             FullPath         = $fullWorkingPath
-            #var4 = "test"
-
         }
     }
     return $output
 }
 function Find-GoProSequenceChildren {
     param (
+        [ValidateScript({
+            if( -Not ($_ | Test-Path) ){
+                throw "Folder does not exist"
+            }
+            return $true
+        })]
         [string]$workingFolder,
         [string]$cameraModel,
+        [ValidatePattern("[0-9][0-9][0-9][0-9]")]
         [string]$sequenceNumber
     )   
     switch ( $cameraModel ) {
@@ -71,7 +61,7 @@ function Find-GoProSequenceChildren {
     $filelist = Get-ChildItem -Path $workingFolder -Filter $sequenceChildrenRegex
     $childrenfiles = foreach ( $file in $filelist ) {
         $fullWorkingPath = $workingFolder + $file.Name
-        Write-Verbose "Found $($file.Name). File is at $fullWorkingPath"
+        Write-Host "Found $($file.Name). File is at $fullWorkingPath"
         [PSCustomObject]@{
             FileNumber       = $childCounter
             SequenceNumber   = $sequenceNumber
@@ -83,12 +73,47 @@ function Find-GoProSequenceChildren {
     $parentfile
     $childrenfiles
 }
+function New-GoProMergedFile {
+    param (
+        $sequenceObject,
+        [ValidateScript({
+            if( -Not ($_ | Test-Path) ){
+                throw "Folder does not exist"
+            }
+            return $true
+        })]
+        [string]$outputFolder,
+        [string]$outputfilename
+    )
 
+    # Check for disk space
+    # If no filename sequence.mp4
+    # Make ffmpeg bit less hideous
 
-[string]$workingFolder = "C:\Users\msn\Desktop\testfolder\"
-[string]$cameraModel = "HERO5"
-[string]$sequenceNumber = "0548"
+    $mergefilepath = $outputFolder + $sequenceObject[0].SequenceNumber + ".txt"
+    New-item -Force $mergefilepath 
+    Write-Verbose "Merging $($sequenceObject.Count) files."
+    foreach ($file in $sequenceObject) {
+        $linetoadd = "file `'$($file.FullPath)`'"
+        Add-Content -Path $mergefilepath -Value $linetoadd
+    }
+    if (!(Test-Path .\ffmpeg.exe -PathType Leaf)) {
+        Write-Error "ffmpeg.exe not found - Please copy ffmpeg.exe into this folder"
+    }
+    else {
+        $version = (.\ffmpeg.exe -version)
+        Write-Verbose "FFmpeg found, version as: $($version[0])"
+    }
+    $outputfilepath = $outputFolder + $sequenceObject[0].SequenceNumber + ".mp4"
+    $startpath = "./ffmpeg.exe"
+    $startarguments = " -f concat -safe 0 -i `"$mergefilepath`" -c copy `"$outputfilepath`""
+    Start-Process -wait -FilePath $startpath -ArgumentList $startarguments
 
-Find-GoProSequenceChildren -workingFolder $workingFolder -cameraModel $cameraModel -sequenceNumber 0548
+    
+}
 
-Find-GoProPossibleSequences -workingFolder $workingfolder -cameraModel $cameraModel
+#Find-GoProPossibleSequences -workingFolder $workingfolder -cameraModel $cameraModel
+
+$sequenceObject = Find-GoProSequenceChildren -workingFolder $workingFolder -cameraModel $cameraModel -sequenceNumber 0549
+
+New-GoProMergedFile -sequenceObject $sequenceObject -outputFolder $outputfolder
