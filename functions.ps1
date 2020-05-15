@@ -98,10 +98,6 @@ function New-GoProMergedFile {
     if ($driveFreeSpace -lt $totalSpaceEstimate) {
         Throw "Insufficient drive space on $driveletter to merge."
     }
-
-    # Check for disk space
-    # If no filename sequence.mp4
-    # Make ffmpeg bit less hideous
     
     # Prepare the things
     $mergefilepath = $outputFolder + $sequenceObject[0].SequenceNumber + ".txt"
@@ -118,7 +114,13 @@ function New-GoProMergedFile {
         $version = (.\ffmpeg.exe -version)
         Write-Verbose "FFmpeg found, version as: $($version[0])"
     }
-    $outputfilepath = $outputFolder + $sequenceObject[0].SequenceNumber + ".mp4"
+
+    if (!($outputfilename)) {
+        $outputfilepath = $outputFolder + $sequenceObject[0].SequenceNumber + ".mp4"
+    }
+    else {
+        $outputfilepath = $outputFolder + $outputfilename
+    }
     
     # Do the merge
     $startpath = "./ffmpeg.exe"
