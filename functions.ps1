@@ -1,13 +1,14 @@
 function Find-GoProPossibleSequences {
     param (
-        [ValidateScript({
-            if( -Not ($_ | Test-Path) ){
-                throw "Folder does not exist"
-            }
-            return $true
-        })]
+        [ValidateScript( {
+                if ( -Not ($_ | Test-Path) ) {
+                    throw "Folder does not exist"
+                }
+                return $true
+            })]
         [string]$workingFolder,
-        [string]$cameraModel = "HERO5"
+        [Parameter(Mandatory = $True)]
+        [string]$cameraModel
     )
     switch ( $cameraModel ) {
         HERO5 { $sequenceNumberRegex = "GOPR*MP4" }
@@ -29,13 +30,14 @@ function Find-GoProPossibleSequences {
 }
 function Find-GoProSequenceChildren {
     param (
-        [ValidateScript({
-            if( -Not ($_ | Test-Path) ){
-                throw "Folder does not exist"
-            }
-            return $true
-        })]
+        [ValidateScript( {
+                if ( -Not ($_ | Test-Path) ) {
+                    throw "Folder does not exist"
+                }
+                return $true
+            })]
         [string]$workingFolder,
+        [Parameter(Mandatory = $True)]
         [string]$cameraModel,
         [ValidatePattern("[0-9][0-9][0-9][0-9]")]
         [string]$sequenceNumber
@@ -76,20 +78,32 @@ function Find-GoProSequenceChildren {
 function New-GoProMergedFile {
     param (
         $sequenceObject,
-        [ValidateScript({
-            if( -Not ($_ | Test-Path) ){
-                throw "Folder does not exist"
-            }
-            return $true
-        })]
+        [Parameter(Mandatory = $True)]
+        [ValidateScript( {
+                if ( -Not ($_ | Test-Path) ) {
+                    throw "Folder does not exist"
+                }
+                return $true
+            })]
         [string]$outputFolder,
         [string]$outputfilename
     )
 
+    # Validate free space
+    $driveletter = $outputFolder.Substring(0, 1)
+    foreach ($file in $sequenceObject) {
+        $totalSpaceEstimate = $totalSpaceEstimate + (Get-ChildItem $file.FullPath).Length
+    }
+    $driveFreeSpace = (Get-Volume $driveletter).SizeRemaining
+    if ($driveFreeSpace -lt $totalSpaceEstimate) {
+        Throw "Insufficient drive space on $driveletter to merge."
+    }
+
     # Check for disk space
     # If no filename sequence.mp4
     # Make ffmpeg bit less hideous
-
+    
+    # Prepare the things
     $mergefilepath = $outputFolder + $sequenceObject[0].SequenceNumber + ".txt"
     New-item -Force $mergefilepath 
     Write-Verbose "Merging $($sequenceObject.Count) files."
@@ -105,15 +119,26 @@ function New-GoProMergedFile {
         Write-Verbose "FFmpeg found, version as: $($version[0])"
     }
     $outputfilepath = $outputFolder + $sequenceObject[0].SequenceNumber + ".mp4"
+    
+    # Do the merge
     $startpath = "./ffmpeg.exe"
     $startarguments = " -f concat -safe 0 -i `"$mergefilepath`" -c copy `"$outputfilepath`""
-    Start-Process -wait -FilePath $startpath -ArgumentList $startarguments
+    $proc = Start-Process -wait -FilePath $startpath -ArgumentList $startarguments -PassThru
+    if ($proc.ExitCode -ne 0) {
+        Write-Warning "$_ exited with status code $($proc.ExitCode)"
+    }
+    else {
+        Write-Host "Appears that merge was successful! Hurray!"
+    }
 
-    
+    # Cleanup
+    Remove-Item -Force $mergefilepath
 }
 
-#Find-GoProPossibleSequences -workingFolder $workingfolder -cameraModel $cameraModel
+$workingfolder = "C:\Users\username\Desktop\2020-05-14 - Cycle - 30k loop\"
+$cameraModel = "HERO5"
+$outputfolder = $workingfolder
 
-$sequenceObject = Find-GoProSequenceChildren -workingFolder $workingFolder -cameraModel $cameraModel -sequenceNumber 0549
-
+$sequence = Find-GoProPossibleSequences -workingFolder $workingfolder -cameraModel $cameraModel
+$sequenceObject = Find-GoProSequenceChildren -workingFolder $workingfolder -sequenceNumber $sequence.SequenceNumber -cameraModel $cameraModel
 New-GoProMergedFile -sequenceObject $sequenceObject -outputFolder $outputfolder
