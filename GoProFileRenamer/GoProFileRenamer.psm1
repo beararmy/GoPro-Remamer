@@ -1,3 +1,41 @@
+<#
+ .Synopsis
+  Tools to work with Gopro HERO5 video files
+
+ .Description
+  Small set of tools that will help to merge a set of gopro files into one large file
+
+ .Parameter cameraModel
+  Model of GoPro, currently only HERO5 accepted, add more in switch.
+
+ .Parameter workingfolder
+  [String]Folder where files are located.
+
+ .Parameter outputfolder
+  [String]Folder where merged file is to be created.
+
+ .Parameter sequenceNumber
+  [String]Specific four digit number for that video sequence.
+
+ .Parameter outputfilename
+  [String]Short filename of merged output file, ie output.mp4.
+   
+  .Parameter sequenceObject
+  [pscustomobject]Object will all files (in order) to be merged.
+
+ .Example
+   # Find all of the video sequences in a folder
+   Find-GoProPossibleSequences -workingFolder "C:\Users\beararmy\Desktop\2020-05-14-local-cycle\" -cameraModel "HERO5"
+
+ .Example
+   # Find all of the files in a particular sequence
+   Find-GoProSequenceChildren -workingFolder $workingfolder -cameraModel $cameraModel -sequenceNumber "0413"
+
+ .Example
+   # Merge an entire sequence based on an object from Find-GoProSequenceChildren
+   New-GoProMergedFile -sequenceObject $sequenceObject -outputFolder $outputfolder
+#>  
+
 function Find-GoProPossibleSequences {
     param (
         [ValidateScript( {
@@ -108,7 +146,21 @@ function New-GoProMergedFile {
         Add-Content -Path $mergefilepath -Value $linetoadd
     }
     if (!(Test-Path .\ffmpeg.exe -PathType Leaf)) {
-        Write-Error "ffmpeg.exe not found - Please copy ffmpeg.exe into this folder"
+        Write-Verbose "ffmpeg.exe not found - Downloading"
+        # Get the zip file
+        $ffmpegURI = "https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-latest-win64-static.zip"
+        $ffmpegZIP = ".\ffmpeg-latest-win64-static.zip"
+        Invoke-WebRequest -Uri $ffmpegURI -OutFile $ffmpegZIP
+
+        # Extract the zip file
+        $extractedPath = "."
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $extractedPath)
+
+        # Delete everything but ffmpeg.exe
+        Move-Item -Force ".\ffmpeg-latest-win64-static\bin\ffmpeg.exe" ".\ffmpeg.exe"
+        Remove-Item -Force ".\ffmpeg-latest-win64-static\" -Recurse 
+        remove-item -Force -confirm:$false "ffmpeg-latest-win64-static.zip"
     }
     else {
         $version = (.\ffmpeg.exe -version)
@@ -137,10 +189,4 @@ function New-GoProMergedFile {
     Remove-Item -Force $mergefilepath
 }
 
-$workingfolder = "C:\Users\username\Desktop\2020-05-14 - Cycle - 30k loop\"
-$cameraModel = "HERO5"
-$outputfolder = $workingfolder
-
-$sequence = Find-GoProPossibleSequences -workingFolder $workingfolder -cameraModel $cameraModel
-$sequenceObject = Find-GoProSequenceChildren -workingFolder $workingfolder -sequenceNumber $sequence.SequenceNumber -cameraModel $cameraModel
-New-GoProMergedFile -sequenceObject $sequenceObject -outputFolder $outputfolder
+Export-ModuleMember -Function Find-GoProPossibleSequences, Find-GoProSequenceChildren, New-GoProMergedFile
