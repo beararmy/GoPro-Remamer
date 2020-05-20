@@ -34,6 +34,10 @@
  .Example
    # Merge an entire sequence based on an object from Find-GoProSequenceChildren
    New-GoProMergedFile -sequenceObject $sequenceObject -outputFolder $outputfolder
+
+ .Example
+   # Take a correcty padded clip for submission to police reporting website
+   New-GoProPoliceSubmittableSnip -clipStartTime "01:04:10" -clipDuration 5 -inputFileName "C:\Users\beararmy\Desktop\2020-05-14-local-cycle\0552.mp4" -outputFileName "C:\Users\beararmy\Desktop\2020-05-14-local-cycle\AB12OOO-clip.mp4"
 #>  
 
 function Find-GoProPossibleSequences {
@@ -188,5 +192,62 @@ function New-GoProMergedFile {
     # Cleanup
     Remove-Item -Force $mergefilepath
 }
+function New-GoProPoliceSubmittableSnip {
+    param (
+        [Parameter(Mandatory = $True)]
+        [string]$clipStartTime,
+        [int]$clipDuration = 10,
+        [Parameter(Mandatory = $True)]
+        [ValidateScript( {
+                if ( -Not ($_ | Test-Path) ) {
+                    throw "File does not exist"
+                }
+                return $true
+            })]
+        [string]$inputFileName,
+        [Parameter(Mandatory = $True)]
+        [string]$outputFileName,
+        [int]$clipPadding = 120
+    )
+    # Sort out a copy of ffmpeg
+    if (!(Test-Path .\ffmpeg.exe -PathType Leaf)) {
+        Write-Verbose "ffmpeg.exe not found - Downloading"
+        # Get the zip file
+        $ffmpegURI = "https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-latest-win64-static.zip"
+        $ffmpegZIP = ".\ffmpeg-latest-win64-static.zip"
+        Invoke-WebRequest -Uri $ffmpegURI -OutFile $ffmpegZIP
+        # Extract the zip file
+        $extractedPath = "."
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($ffmpegZIP, $extractedPath)
+        #Delete everything but ffmpeg.exe
+        Move-Item -Force ".\ffmpeg-latest-win64-static\bin\ffmpeg.exe" ".\ffmpeg.exe"
+        Remove-Item -Force ".\ffmpeg-latest-win64-static\" -Recurse 
+        remove-item -Force -confirm:$false "ffmpeg-latest-win64-static.zip"
+    }
+    else {
+        $version = (.\ffmpeg.exe -version)
+        Write-Verbose "FFmpeg found, version as: $($version[0])"
+    }
 
-Export-ModuleMember -Function Find-GoProPossibleSequences, Find-GoProSequenceChildren, New-GoProMergedFile
+    # Police submission requires 2 mins either side of "The Event"
+    if ($clipStartTime -match [regex]"(?<Hours>\d{2}).(?<Minutes>\d{2}).(?<Seconds>\d{2})") {
+        $clipStartTimeSS = New-TimeSpan -Hours $matches.Hours -Minutes $matches.Minutes -Seconds $matches.Seconds
+        [int]$clipStartTimeS = $clipStartTimeSS.TotalSeconds
+    }
+    $clipStartTimes = $clipStartTimeS - $clipPadding
+    $clipDuration = $clipDuration + ($clipPadding * 2)
+
+    # Do the merge
+    $startpath = "./ffmpeg.exe"
+    $startarguments = " -ss `"$clipStartTimeS`" -t `"$clipDuration`" -i `"$inputFileName`" -c copy `"$outputFileName`""
+    $proc = Start-Process -wait -FilePath $startpath -ArgumentList $startarguments -PassThru
+    if ($proc.ExitCode -ne 0) {
+        Write-Warning "$_ exited with status code $($proc.ExitCode). Failed to snip the snip."
+    }
+    else {
+        Write-Host "Snip has been created."
+    }
+}
+
+Export-ModuleMember -Function Find-GoProPossibleSequences, Find-GoProSequenceChildren, New-GoProMergedFile, New-GoProPoliceSubmittableSnip
