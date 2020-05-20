@@ -155,9 +155,9 @@ function New-GoProMergedFile {
         # Extract the zip file
         $extractedPath = "."
         Add-Type -AssemblyName System.IO.Compression.FileSystem
-        [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $extractedPath)
-
-        # Delete everything but ffmpeg.exe
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($ffmpegZIP, $extractedPath)
+        
+        #Delete everything but ffmpeg.exe
         Move-Item -Force ".\ffmpeg-latest-win64-static\bin\ffmpeg.exe" ".\ffmpeg.exe"
         Remove-Item -Force ".\ffmpeg-latest-win64-static\" -Recurse 
         remove-item -Force -confirm:$false "ffmpeg-latest-win64-static.zip"
